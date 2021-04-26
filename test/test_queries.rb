@@ -107,4 +107,18 @@ class TestQueries < Minitest::Test
       Prosopite.finish
     end
   end
+
+  def run_n_plus_one
+    Chair.last(20).each do |c|
+      c.legs.first
+    end
+  end
+
+  def test_scan_with_block_not_raising_exception
+    Prosopite::Runner.new.tap do |runner|
+      message = runner.scan { run_n_plus_one }
+      assert_match(/N\+1 queries detected:/, message)
+    end
+  end
 end
+
