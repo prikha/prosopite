@@ -2,6 +2,28 @@
 module Prosopite
   class NPlusOneQueriesError < StandardError; end
   class << self
+    def method_missing(method, *args, &block)
+      if runner.respond_to?(method)
+        if block_given?
+          runner.public_send(method, *args, &block)
+        else
+          runner.public_send(method, *args)
+        end
+      else
+        super
+      end
+    end
+
+    def respond_to_missing?(method)
+      runner.respond_to?(method)
+    end
+
+    def runner
+      @runner ||= Runner.new
+    end
+  end
+
+  class Runner
     attr_writer :raise,
                 :stderr_logger,
                 :rails_logger,
@@ -33,7 +55,7 @@ module Prosopite
     end
 
     def tc
-      Thread.current
+      @tc ||= {}
     end
 
     def scan?

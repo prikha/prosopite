@@ -1,3 +1,4 @@
+require 'bundler'
 require "minitest/autorun"
 require "factory_bot"
 require "active_record"
@@ -45,3 +46,4 @@ FactoryBot.define do
     end
   end
 end
+
