@@ -2,122 +2,74 @@ require 'test_helper'
 
 class TestQueries < Minitest::Test
   def setup
-    Prosopite.raise = true
+    create_chairs
   end
 
-  def test_first_in_has_many_loop
-    # 20 chairs, 4 legs each
-    chairs = create_list(:chair, 20)
-    chairs.each { |c| create_list(:leg, 4, chair: c) }
-
-    Prosopite.scan
-    Chair.last(20).each do |c|
-      c.legs.first
+  def create_chairs(count = 20)
+    create_list(:chair, count).each do |chair|
+      create_list(:leg, 4, chair: chair)
     end
-
-    assert_n_plus_one
   end
 
-  def test_last_in_has_many_loop
-    # 20 chairs, 4 legs each
-    chairs = create_list(:chair, 20)
-    chairs.each { |c| create_list(:leg, 4, chair: c) }
-
-    Prosopite.scan
-    Chair.last(20).each do |c|
-      c.legs.last
+  def assert_no_n_plus_one(whitelist: [], &block)
+    report = Prosopite.scan(whitelist: whitelist) do
+      block.call
     end
+    assert(report.size == 0)
+  end
 
-    assert_n_plus_one
+  def assert_n_plus_one(count: 1, whitelist: [], &block)
+    report = Prosopite.scan(whitelist: whitelist) do
+      block.call
+    end
+    assert(report.size == count)
+  end
+
+  def test_clean_scan
+    assert_no_n_plus_one do
+      Chair.includes(:legs).last(20).each do |c|
+        c.legs.first
+      end
+    end
+  end
+
+  def test_n_plus_one_scan
+    assert_n_plus_one do
+      Chair.last(20).each do |c|
+        c.legs.first
+      end
+    end
   end
 
   def test_pluck_in_has_many_loop
-    # 20 chairs, 4 legs each
-    chairs = create_list(:chair, 20)
-    chairs.each { |c| create_list(:leg, 4, chair: c) }
-
-    Prosopite.scan
-    Chair.last(20).each do |c|
-      c.legs.pluck(:id)
-    end
-
-    assert_n_plus_one
-  end
-
-  def test_class_change
-    # 20 chairs, 4 legs each
-    chairs = create_list(:chair, 20)
-    chairs.each { |c| create_list(:leg, 4, chair: c) }
-
-    Prosopite.scan
-    Chair.last(20).map{ |c| c.becomes(ArmChair) }.each do |ac|
-      ac.legs.map(&:id)
-    end
-
-    assert_n_plus_one
-  end
-
-  def test_assoc_in_loop
-    create_list(:leg, 10)
-
-    Prosopite.scan
-    Leg.last(10).each do |l|
-      l.chair
-    end
-
-    assert_n_plus_one
-  end
-
-  def test_uniqueness_validations
-    create_list(:chair, 10)
-
-    Prosopite.scan
-    Chair.last(10).each do |c|
-      c.update(name: "#{c.name} + 1")
-    end
-    Prosopite.finish
-  end
-
-  def test_scan_with_block
-    # 20 chairs, 4 legs each
-    chairs = create_list(:chair, 20)
-    chairs.each { |c| create_list(:leg, 4, chair: c) }
-
-    assert_raises(Prosopite::NPlusOneQueriesError) do
-      Prosopite.scan do
-        Chair.last(20).each do |c|
-          c.legs.first
-        end
+    assert_n_plus_one do
+      Chair.last(20).each do |c|
+        c.legs.pluck(:id)
       end
     end
   end
 
-  def test_scan_with_block_raising_error
-    begin
-      Prosopite.scan do
-        raise ArgumentError # raise sample error
+  def test_type_change
+    assert_n_plus_one do
+      Chair.last(20).map{ |c| c.becomes(ArmChair) }.each do |ac|
+        ac.legs.map(&:id)
       end
-    rescue ArgumentError
-      assert_equal(false, Prosopite.scan?)
     end
   end
 
-  def assert_n_plus_one
-    assert_raises(Prosopite::NPlusOneQueriesError) do
-      Prosopite.finish
+  def test_association_in_loop
+    assert_n_plus_one do
+      Leg.last(10).each do |l|
+        l.chair
+      end
     end
   end
 
-  def run_n_plus_one
-    Chair.last(20).each do |c|
-      c.legs.first
-    end
-  end
-
-  def test_scan_with_block_not_raising_exception
-    Prosopite::Runner.new.tap do |runner|
-      message = runner.scan { run_n_plus_one }
-      assert_match(/N\+1 queries detected:/, message)
+  def test_uniqueness_validations_is_not_captured
+    assert_no_n_plus_one do
+      Chair.last(10).each do |c|
+        c.update(name: "#{c.name} + 1")
+      end
     end
   end
 end
