@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'test_helper'
 
 class TestQueries < Minitest::Test
@@ -15,7 +17,7 @@ class TestQueries < Minitest::Test
     report = Prosopite.scan(whitelist: whitelist) do
       block.call
     end
-    assert(report.size == 0)
+    assert(report.size.zero?)
   end
 
   def assert_n_plus_one(count: 1, whitelist: [], &block)
@@ -51,7 +53,7 @@ class TestQueries < Minitest::Test
 
   def test_type_change
     assert_n_plus_one do
-      Chair.last(20).map{ |c| c.becomes(ArmChair) }.each do |ac|
+      Chair.last(20).map { |c| c.becomes(ArmChair) }.each do |ac|
         ac.legs.map(&:id)
       end
     end
@@ -59,9 +61,7 @@ class TestQueries < Minitest::Test
 
   def test_association_in_loop
     assert_n_plus_one do
-      Leg.last(10).each do |l|
-        l.chair
-      end
+      Leg.last(10).each(&:chair)
     end
   end
 
@@ -73,4 +73,3 @@ class TestQueries < Minitest::Test
     end
   end
 end
-

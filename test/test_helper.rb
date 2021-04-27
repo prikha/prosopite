@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'bundler'
 require 'minitest/autorun'
 require 'factory_bot'
@@ -5,19 +7,21 @@ require 'active_record'
 
 require 'prosopite'
 
-class Minitest::Test
-  include FactoryBot::Syntax::Methods
+module Minitest
+  class Test
+    include FactoryBot::Syntax::Methods
+  end
 end
 
 # Activerecord
-ActiveRecord::Base.establish_connection adapter: "sqlite3", database: ":memory:"
+ActiveRecord::Base.establish_connection adapter: 'sqlite3', database: ':memory:'
 
 ActiveRecord::Schema.define do
-  create_table "legs", force: true do |t|
-    t.integer "chair_id"
+  create_table 'legs', force: true do |t|
+    t.integer 'chair_id'
   end
-  create_table "chairs", force: true do |t|
-    t.string "name"
+  create_table 'chairs', force: true do |t|
+    t.string 'name'
   end
 end
 
@@ -46,4 +50,3 @@ FactoryBot.define do
     end
   end
 end
-

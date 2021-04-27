@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 module Prosopite
-  class Runner
+  class Runner # :nodoc:
     def initialize(whitelist: [])
       @whitelist = ['active_record/validations/uniqueness'] + whitelist
     end
@@ -18,10 +20,14 @@ module Prosopite
       @store = {}
     end
 
-    def detect_n_plus_ones
+    def detect_n_plus_ones # rubocop:disable  Metrics/AbcSize, Metrics/MethodLength
       store.values.select do |statement|
         next if statement[:count] <= 1
-        next if statement[:caller].any? {|backtrace_line| whitelist.any? {|whitelisted| backtrace_line.include?(whitelisted) }}
+        next if statement[:caller].any? do |backtrace_line|
+                  whitelist.any? do |whitelisted|
+                    backtrace_line.include?(whitelisted)
+                  end
+                end
 
         compact_caller = statement[:caller].reject { |line| line.include?(::Bundler.bundle_path.to_s) }
 
@@ -33,16 +39,17 @@ module Prosopite
       end
     end
 
-    def record_sql(&block)
+    def record_sql(&block) # rubocop:disable  Metrics/AbcSize, Metrics/MethodLength
       subscriber = ActiveSupport::Notifications.subscribe 'sql.active_record' do |_, _, _, _, data|
         sql = data[:sql]
+        cached = data[:cached]
 
-        next unless sql.include?('SELECT') && data[:cached].nil? && Query.fingerprint(sql)
-        location_key = Digest::SHA1.hexdigest(caller.join)
+        next if !sql.include?('SELECT') || cached
 
         sql_fingerprint = Query.fingerprint(sql)
-
         next unless sql_fingerprint
+
+        location_key = Digest::SHA1.hexdigest(caller.join)
 
         store["#{sql_fingerprint}_#{location_key}"] ||= {
           count: 0,
@@ -57,7 +64,6 @@ module Prosopite
       end
 
       block.call
-
     ensure
       ActiveSupport::Notifications.unsubscribe(subscriber)
     end

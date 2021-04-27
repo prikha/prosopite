@@ -111,15 +111,6 @@ Or install it yourself as:
 
     $ gem install prosopite
 
-## Configuration
-
-The preferred type of notifications can be configured with:
-
-* `Prosopite.rails_logger = true`: Send warnings to the Rails log
-* `Prosopite.prosopite_logger = true`: Send warnings to `log/prosopite.log`
-* `Prosopite.stderr_logger = true`: Send warnings to STDERR
-* `Prosopite.raise = true`: Raise warnings as exceptions
-
 ## Development Environment Usage
 
 Prosopite auto-detection can be enabled on all controllers:
@@ -127,79 +118,48 @@ Prosopite auto-detection can be enabled on all controllers:
 ```ruby
 class ApplicationController < ActionController::Base
   unless Rails.env.production?
-    before_action do
-      Prosopite.scan
-    end
-
-    after_action do
-      Prosopite.finish
+    around_action do
+      Prosopite.scan! do
+        yield
+      end
     end
   end
 end
 ```
-And the preferred notification channel should be configured:
-
-```ruby
-# config/environments/development.rb
-
-config.after_initialize do
-  Prosopite.rails_logger = true
-end
-```
 
 ## Test Environment Usage
-
-Tests with N+1 queries can be configured to fail with:
-
-```ruby
-# config/environments/test.rb
-
-config.after_initialize do
-  Prosopite.rails_logger = true
-  Prosopite.raise = true
-end
-```
-
 And each test can be scanned with:
 
 ```ruby
 # spec/spec_helper.rb
-
-config.before(:each) do
-  Prosopite.scan
-end
-
-config.after(:each) do
-  Prosopite.finish
+config.around(:each) do |example|
+  Prosopite.scan! do
+    example.run
+  end
 end
 ```
 
-WARNING: scan/finish should run before/after **each** test and NOT before/after the whole suite.
+or with custom code using scan report
 
-## Allow list
+```ruby
+# spec/your_spec.rb
+it 'has no N+1 queries' do
+  n_ones = Prosopite.scan do
+    MyAction.perform(arguments)
+  end
+  
+  expect(n_ones.size).to eq(0)
+end
+```
+
+## Whitelisting
 
 Ignore notifications for call stacks containing one or more substrings:
 
 ```ruby
-Prosopite.allow_list = ['substring_in_call_stack']
-```
-
-## Scanning code outside controllers or tests
-
-All you have to do is to wrap the code with:
-
-```ruby
-Prosopite.scan
-<code to scan>
-Prosopite.finish
-```
-
-or 
-
-```ruby
-Prosopite.scan do
-<code to scan>
-end
+  Prosopite.scan!(whitelist: 'myapp/lib/known_n_plus_ones/') do
+    example.run
+  end
 ```
 
 ## Contributing
